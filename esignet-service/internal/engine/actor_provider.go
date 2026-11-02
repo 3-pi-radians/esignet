@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"sort"
 
 	"github.com/thunder-id/thunderid/pkg/thunderidengine/common"
@@ -82,7 +83,7 @@ func (p *actorProvider) GetOAuthClientByClientID(
 		ID:                      client.ClientID,
 		OUID:                    client.RpID,
 		ClientID:                client.ClientID,
-		GrantTypes:              []providers.GrantType{providers.GrantTypeAuthorizationCode},
+		GrantTypes:              getGrantTypes(client.GrantTypes),
 		RedirectURIs:            client.RedirectURIs,
 		ResponseTypes:           []providers.ResponseType{providers.ResponseTypeCode},
 		TokenEndpointAuthMethod: providers.TokenEndpointAuthMethodPrivateKeyJWT,
@@ -274,6 +275,17 @@ func extractJWKs(jwk string) []json.RawMessage {
 		return jwks.Keys
 	}
 	return []json.RawMessage{json.RawMessage(jwk)}
+}
+
+// getGrantTypes maps a client's registered grant types to engine grant types. authorization_code is
+// always allowed (every esignet client is an authorization-code client); the token-exchange grant is
+// added only when registered, which enables OpenID Connect Native SSO for that client.
+func getGrantTypes(registered []string) []providers.GrantType {
+	grantTypes := []providers.GrantType{providers.GrantTypeAuthorizationCode}
+	if slices.Contains(registered, string(providers.GrantTypeTokenExchange)) {
+		grantTypes = append(grantTypes, providers.GrantTypeTokenExchange)
+	}
+	return grantTypes
 }
 
 // getAllowedScopes combines both OIDC scopes and authorization scopes

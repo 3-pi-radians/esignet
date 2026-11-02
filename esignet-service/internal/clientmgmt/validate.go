@@ -419,6 +419,13 @@ func validateACRs(acrs []string, allowed map[string]struct{}, minItems, maxItems
 	return nil
 }
 
+const (
+	grantTypeAuthorizationCode = "authorization_code"
+	// grantTypeTokenExchange (RFC 8693) lets a client sign in silently through OpenID Connect Native
+	// SSO with another client's ID token and device secret.
+	grantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
+)
+
 func validateGrantTypes(grants []string, minItems, maxItems int) error {
 	if minItems > 0 && len(grants) < minItems {
 		return validationErr("invalid_grant_type")
@@ -430,7 +437,7 @@ func validateGrantTypes(grants []string, minItems, maxItems int) error {
 		return validationErr("invalid_grant_type")
 	}
 	for _, g := range grants {
-		if g != "authorization_code" {
+		if g != grantTypeAuthorizationCode && g != grantTypeTokenExchange {
 			return validationErr("invalid_grant_type")
 		}
 	}
@@ -501,6 +508,7 @@ var allowedAdditionalConfigKeys = map[string]struct{}{
 	"require_pkce":                          {},
 	"purpose":                               {},
 	"allowed_authorization_scopes":          {},
+	"device_sso_allowed_clients":            {},
 }
 
 // validateAdditionalConfig validates the additionalConfig JSON object.
@@ -560,12 +568,23 @@ func validateAdditionalConfig(raw json.RawMessage, hasEncPublicKey bool) error {
 			return err
 		}
 	}
+	if v, ok := cfg["device_sso_allowed_clients"]; ok {
+		if err := validateUniqueNonBlankStrings(v); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 // validateAllowedAuthorizationScopes validates the allowed_authorization_scopes
 // additional_config value: an array of unique, non-blank scope names.
 func validateAllowedAuthorizationScopes(raw json.RawMessage) error {
+	return validateUniqueNonBlankStrings(raw)
+}
+
+// validateUniqueNonBlankStrings validates an additional_config value that must be an array of unique,
+// non-blank strings (allowed_authorization_scopes, device_sso_allowed_clients).
+func validateUniqueNonBlankStrings(raw json.RawMessage) error {
 	var scopes []string
 	if err := json.Unmarshal(raw, &scopes); err != nil {
 		return validationErr("invalid_additional_config")

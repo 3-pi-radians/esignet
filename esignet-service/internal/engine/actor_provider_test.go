@@ -496,3 +496,11 @@ type ActorProviderTestSuite struct {
 func TestActorProviderTestSuite(t *testing.T) {
 	suite.Run(t, new(ActorProviderTestSuite))
 }
+
+func (ts *ActorProviderTestSuite) TestGetGrantTypes() {
+	ts.Equal([]providers.GrantType{providers.GrantTypeAuthorizationCode}, getGrantTypes(nil))
+	ts.Equal([]providers.GrantType{providers.GrantTypeAuthorizationCode},
+		getGrantTypes([]string{"authorization_code"}))
+	ts.Equal([]providers.GrantType{providers.GrantTypeAuthorizationCode, providers.GrantTypeTokenExchange},
+		getGrantTypes([]string{"authorization_code", "urn:ietf:params:oauth:grant-type:token-exchange"}))
+}

@@ -816,3 +816,25 @@ type ValidateTestSuite struct {
 func TestValidateTestSuite(t *testing.T) {
 	suite.Run(t, new(ValidateTestSuite))
 }
+
+func (ts *ValidateTestSuite) TestValidateGrantTypes_NativeSSO() {
+	ts.NoError(validateGrantTypes([]string{"authorization_code"}, 1, 0))
+	ts.NoError(validateGrantTypes([]string{"authorization_code", grantTypeTokenExchange}, 1, 0))
+	ts.Error(validateGrantTypes([]string{"client_credentials"}, 1, 0))
+	ts.Error(validateGrantTypes([]string{"token_exchange"}, 1, 0), "only the RFC 8693 URN is accepted")
+	ts.Error(validateGrantTypes([]string{grantTypeTokenExchange, grantTypeTokenExchange}, 1, 0))
+}
+
+func (ts *ValidateTestSuite) TestValidateAdditionalConfig_DeviceSSOAllowedClients() {
+	ts.NoError(validateAdditionalConfig(json.RawMessage(`{"device_sso_allowed_clients":["child-app"]}`), false))
+	ts.NoError(validateAdditionalConfig(json.RawMessage(
+		`{"allowed_authorization_scopes":["device_sso"],"device_sso_allowed_clients":[]}`), false))
+	for _, bad := range []string{
+		`{"device_sso_allowed_clients":"child-app"}`,
+		`{"device_sso_allowed_clients":["a","a"]}`,
+		`{"device_sso_allowed_clients":[" "]}`,
+		`{"device_sso_allowed_clients":[1]}`,
+	} {
+		ts.Error(validateAdditionalConfig(json.RawMessage(bad), false), bad)
+	}
+}

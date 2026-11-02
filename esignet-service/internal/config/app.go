@@ -35,8 +35,11 @@ const (
 	defaultGateErrorPath         = "/error"
 	defaultRequestTimeLeewaySecs = 300
 	defaultClientCacheTTLSecs    = 3600
-	defaultDesignCacheTTLSecs    = 86400
-	defaultFlowCacheTTLSecs      = 86400
+	// defaultDeviceSecretExpirySecs bounds how long a Native SSO device secret (and therefore the
+	// silent sign-in window for sibling apps) stays valid: 24 hours.
+	defaultDeviceSecretExpirySecs = 86400
+	defaultDesignCacheTTLSecs     = 86400
+	defaultFlowCacheTTLSecs       = 86400
 
 	// defaultAuthTransactionIDLength is the fixed length MOSIP IDA/mock-identity-system
 	// require for a transaction id, used when neither deployment.yaml nor
@@ -109,6 +112,7 @@ type AppConfig struct {
 	GateClient                 engineconfig.GateClientConfig    `yaml:"gate_client"`
 	SecurityConfig             SecurityConfig                   `yaml:"security_config"`
 	ClientCacheTTLSecs         int64                            `yaml:"client_cache_ttl_secs"`
+	DeviceSecretExpirySecs     int                              `yaml:"device_secret_expiry_secs"`
 	DesignCacheTTLSecs         int64                            `yaml:"design_cache_ttl_secs"`
 	FlowCacheTTLSecs           int64                            `yaml:"flow_cache_ttl_secs"`
 	AuthTransactionIDLength    int                              `yaml:"auth_transaction_id_length"`
@@ -413,6 +417,9 @@ func applyDefaults(cfg *AppConfig) {
 	if cfg.ClientCacheTTLSecs <= 0 {
 		cfg.ClientCacheTTLSecs = defaultClientCacheTTLSecs
 	}
+
+	cfg.DeviceSecretExpirySecs = envIntOrConfigOrDefault("MOSIP_ESIGNET_DEVICE_SECRET_EXPIRY_SECONDS",
+		cfg.DeviceSecretExpirySecs, defaultDeviceSecretExpirySecs)
 
 	if cfg.DesignCacheTTLSecs <= 0 {
 		cfg.DesignCacheTTLSecs = defaultDesignCacheTTLSecs
